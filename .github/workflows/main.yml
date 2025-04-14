@@ -32,7 +32,7 @@ jobs:
       - name: Zip Bin Folder
         run: |
           cd wof-utilization-mcp-server/bin/Release/net9.0
-          zip -r ../../../release.zip *
+          zip -r ../../../../release.zip *
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
