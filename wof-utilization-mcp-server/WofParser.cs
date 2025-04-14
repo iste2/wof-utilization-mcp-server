@@ -22,7 +22,6 @@ public class WofParser
     
     public async Task<List<WofFacility>> ParseWofFacilitiesAsync(string url = "https://app.wof.de/besucher/")
     {
-        // Fetch the HTML content
         var htmlContent = await _httpClient.GetStringAsync(url);
         return ParseWofFacilitiesFromHtml(htmlContent);
     }
@@ -31,7 +30,6 @@ public class WofParser
     {
         var facilities = new List<WofFacility>();
         
-        // Regular expression to find facility rows
         const string facilityPattern = @"<tr>\s*<td>\s*(WOF\s+\d+\s+–\s+[^<]+)\s*</td>\s*<td>[^<]*<div[^>]*>\s*<div[^>]*width:\s*(\d+)%[^>]*>(\d+)%\s*</div>";
         
         var matches = Regex.Matches(htmlContent, facilityPattern, RegexOptions.Singleline);
