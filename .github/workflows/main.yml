@@ -1,4 +1,4 @@
-name: Release Bin Folder
+name: Release Windows
 
 on:
   push:
@@ -22,17 +22,17 @@ jobs:
 
       - name: Restore dependencies
         run: dotnet restore
-
-      - name: Build
-        run: dotnet build --configuration Release wof-utilization-mcp-server/wof-utilization-mcp-server.csproj
+          
+      - name: Build for Windows
+        run: dotnet publish wof-utilization-mcp-server/wof-utilization-mcp-server.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish
 
       - name: Test
         run: dotnet test --configuration Release
 
-      - name: Zip Bin Folder
+      - name: Zip Published Output
         run: |
-          cd wof-utilization-mcp-server/bin/Release/net9.0
-          zip -r ../../../../release.zip *
+          cd publish
+          zip -r ../release.zip *
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
