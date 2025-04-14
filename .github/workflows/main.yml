@@ -3,7 +3,7 @@ name: .NET Release
 on:
   push:
     tags:
-      - 'v*' # Will trigger on any tag that starts with v (e.g., v1.0.0)
+      - 'v*'
 
 permissions:
   contents: write
@@ -11,34 +11,74 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        include:
+          - os: windows-latest
+            platform: win-x64
+            extension: .zip
+          - os: ubuntu-latest
+            platform: linux-x64
+            extension: .tar.gz
+          - os: macos-latest
+            platform: osx-x64
+            extension: .tar.gz
+    
+    runs-on: ${{ matrix.os }}
     
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '9.0.x'
-        
-    - name: Restore dependencies
-      run: dotnet restore
-      
-    - name: Build
-      run: dotnet build --configuration Release --no-restore
-      
-    - name: Test
-      run: dotnet test --configuration Release --no-build
+      - uses: actions/checkout@v3
 
-    - name: Pack
-      run: dotnet pack --configuration Release --no-build --output ./artifacts
-      
-    - name: Create Release and Upload Artifacts
-      uses: softprops/action-gh-release@v1
-      with:
-        name: Release ${{ github.ref_name }}
-        files: ./artifacts/*.nupkg
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build
+
+      - name: Publish
+        run: dotnet publish --configuration Release --output ./publish --runtime ${{ matrix.platform }} --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true
+
+      - name: Zip Release Files (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Compress-Archive -Path ./publish/* -DestinationPath ./release-${{ matrix.platform }}.zip
+        shell: pwsh
+
+      - name: Tar Release Files (Unix)
+        if: matrix.os != 'windows-latest'
+        run: tar -czvf release-${{ matrix.platform }}.tar.gz -C ./publish .
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-${{ matrix.platform }}
+          path: ./release-${{ matrix.platform }}${{ matrix.extension }}
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          files: |
+            release-win-x64/release-win-x64.zip
+            release-linux-x64/release-linux-x64.tar.gz
+            release-osx-x64/release-osx-x64.tar.gz
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
